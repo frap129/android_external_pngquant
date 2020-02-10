@@ -30,6 +30,7 @@ JNIEXPORT jboolean JNICALL Java_com_nicdahlquist_pngquant_LibPngQuant_nativePngQ
     };
     options.liq = liq_attr_create();
 
+    options.force = true;
     options.verbose = true;
     liq_set_log_callback(options.liq, log_callback, NULL);
     options.log_callback = log_callback;
@@ -39,5 +40,6 @@ JNIEXPORT jboolean JNICALL Java_com_nicdahlquist_pngquant_LibPngQuant_nativePngQ
     (*env)->ReleaseStringUTFChars(env, jInFilename, inFilename);
     (*env)->ReleaseStringUTFChars(env, jOutFilename, outFilename);
 
+    LOGI("%s" ,"complete");
     return true;
 }

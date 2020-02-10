@@ -185,9 +185,9 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
         }
 
         // when using image as source of a fixed palette the palette is extracted using regular quantization
-        liq_result *remap = liq_quantize_image(options->liq, options->fixed_palette_image ? options->fixed_palette_image : input_image);
-
-        if (remap) {
+        liq_result *remap;
+        liq_error remap_error = liq_image_quantize(options->fixed_palette_image ? options->fixed_palette_image : input_image, options->liq, &remap);
+        if (LIQ_OK == remap_error) {
             liq_set_output_gamma(remap, 0.45455); // fixed gamma ~2.2 for the web. PNG can't store exact 1/2.2
             liq_set_dithering_level(remap, options->floyd);
 
@@ -206,8 +206,10 @@ pngquant_error pngquant_file(const char *filename, const char *outname, struct p
                 }
             }
             liq_result_destroy(remap);
-        } else {
+        } else if (LIQ_QUALITY_TOO_LOW == remap_error) {
             retval = TOO_LOW_QUALITY;
+        } else {
+            retval = INVALID_ARGUMENT; // dunno
         }
     }
 
@@ -249,16 +251,10 @@ static void set_palette(liq_result *result, png8_image *output_image)
 {
     const liq_palette *palette = liq_get_palette(result);
 
-    // tRNS, etc.
     output_image->num_palette = palette->count;
-    output_image->num_trans = 0;
     for(unsigned int i=0; i < palette->count; i++) {
         liq_color px = palette->entries[i];
-        if (px.a < 255) {
-            output_image->num_trans = i+1;
-        }
-        output_image->palette[i] = (png_color){.red=px.r, .green=px.g, .blue=px.b};
-        output_image->trans[i] = px.a;
+        output_image->palette[i] = (rwpng_rgba){.r=px.r, .g=px.g, .b=px.b, .a=px.a};
     }
 }
 
@@ -412,7 +408,7 @@ static pngquant_error read_image(liq_attr *options, const char *filename, int us
     pngquant_error retval;
     #pragma omp critical (libpng)
     {
-        retval = rwpng_read_image24(infile, input_image_p, verbose);
+        retval = rwpng_read_image24(infile, input_image_p, false, verbose);
     }
 
     if (!using_stdin) {
@@ -465,12 +461,7 @@ static pngquant_error prepare_output_image(liq_result *result, liq_image *input_
     const liq_palette *palette = liq_get_palette(result);
     // tRNS, etc.
     output_image->num_palette = palette->count;
-    output_image->num_trans = 0;
-    for(unsigned int i=0; i < palette->count; i++) {
-        if (palette->entries[i].a < 255) {
-            output_image->num_trans = i+1;
-        }
-    }
 
     return SUCCESS;
 }
+
