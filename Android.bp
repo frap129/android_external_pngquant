@@ -1,0 +1,62 @@
+cc_defaults {
+    name: "pngquant_defaults",
+    openmp: true,
+    cflags: [
+        "-std=c99",
+        "-O3",
+        "-fopenmp",
+        "-DOPENMP",
+        "-Wno-error=unused-parameter",
+        "-Wno-error=unused-function",
+        "-Wno-error=unused-const-variable",
+    ],
+    ldflags: [
+        "-O3",
+        "-fopenmp",
+    ],
+}
+
+cc_library_static {
+    name: "libpngquant",
+    defaults: ["pngquant_defaults"],
+    srcs: [
+        "pngquant/rwpng.c",
+        "pngquant/lib/blur.c",
+        "pngquant/lib/kmeans.c",
+        "pngquant/lib/libimagequant.c",
+        "pngquant/lib/mediancut.c",
+        "pngquant/lib/mempool.c",
+        "pngquant/lib/nearest.c",
+        "pngquant/lib/pam.c",
+    ],
+    static_libs: ["libpng_ndk",],
+    export_include_dirs: ["pngquant/"],
+}
+
+cc_library_shared {
+    name: "libpngquantandroid",
+    defaults: ["pngquant_defaults"],
+    srcs: [
+        "jni/native_glue.c",
+        "jni/pngquant.c",
+    ],
+    static_libs: [
+        "libm",
+        "libpng_ndk",
+        "libpngquant",
+    ],
+    shared_libs: [
+        "liblog",
+        "libz",
+    ],
+}
+
+android_library {
+    name: "pngquant",
+    manifest: "AndroidManifest.xml",
+    srcs: ["java/**/*.java",],
+    sdk_version: "current",
+    min_sdk_version: "23",
+    required: ["libpngquantandroid",],
+}
+
